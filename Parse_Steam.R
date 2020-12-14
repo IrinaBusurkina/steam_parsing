@@ -13,8 +13,7 @@ library(stringr)
 STEAM_KEY = "C04E7171D6207236CA5A1D6C2B333943"
 
 
-#цикл на айдишки с групп
-# Задаем группу,которую собираем
+#loop for group's members
 group_members = data.frame()
 for(i in 83:144){
   print(i)
