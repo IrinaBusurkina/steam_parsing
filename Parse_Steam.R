@@ -10,7 +10,7 @@ library(httr)
 library(stringr)
 
 
-STEAM_KEY = "C04E7171D6207236CA5A1D6C2B333943"
+STEAM_KEY = "C0*******************************"
 
 
 #loop for group's members
@@ -47,7 +47,7 @@ games_df = owned_games %>% map_df(magrittr::extract,c("appid","name","playtime_f
   mutate(playtime_forever=seconds_to_period(playtime_forever*60))
 
 
-#цикл на друзей и игры пользователей 
+#loop for games and friends of user 
 friends_dfs = data.frame()
 games_dfs = data.frame()
 for (id in group_members$user_id[1:49000]){
