@@ -52,7 +52,7 @@ meta_2019 = na.omit(meta_2019)
 
 reviews_dfs = data.frame()
 
-for (i in games_id$appid){
+for (i in meta_2019$appid){
 tryCatch({req=paste0("http://store.steampowered.com/appreviews/",i,"?json=1&day_range=9223372036854775807&filter=all&review_type=all&purchase_type=all&language=english&num_per_page=100&cursor=*")
 json = rjson::fromJSON(file=req)
 print(req)
