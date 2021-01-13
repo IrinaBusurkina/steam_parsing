@@ -64,6 +64,10 @@ df = json[[3]] %>%
   mutate(timestamp_created = as.POSIXct(timestamp_created,origin="1970-01-01")) %>%
   mutate(timestamp_updated = as.POSIXct(timestamp_updated,origin="1970-01-01")) %>%
   mutate(link = req)
+  
+  df$steamid = json[[3]] %>% 
+      map_chr(c("author","steamid"))
+  
 reviews_dfs = rbind(reviews_dfs,df)
 
 for (k in 1:19){req1 = paste0("http://store.steampowered.com/appreviews/",i,"?json=1&day_range=9223372036854775807&filter=all&review_type=all&purchase_type=all&language=english&num_per_page=100&cursor=", c)
@@ -77,6 +81,10 @@ c = URLencode(c, reserved = TRUE)
     mutate(timestamp_created = as.POSIXct(timestamp_created,origin="1970-01-01")) %>%
     mutate(timestamp_updated = as.POSIXct(timestamp_updated,origin="1970-01-01")) %>%
     mutate(link = req1)
+                
+    df$steamid = json[[3]] %>% 
+      map_chr(c("author","steamid"))
+                
   reviews_dfs = rbind(reviews_dfs,df)}}
 Sys.sleep(1)
 }
