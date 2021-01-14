@@ -1,0 +1,86 @@
+---
+title: "games_coursework"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+load(file = "review_new_100.rda")
+
+```
+
+```{r}
+str(games_meta_100)
+summary(str_length(games_meta_100$review))
+
+```
+
+```{r}
+# filtering dataset with 100 games titles
+unique_games <- as.data.frame(unique(games_meta_100$name))
+unique_games <- rename(unique_games, "name" = `unique(games_meta_100$name)`)
+unique_games$name <- str_replace_all(unique_games$name, "_", " ")
+unique_games$name <- str_to_lower(unique_games$name)
+unique_games$name <- gsub("[[:punct:]]", " ", unique_games$name, perl=T)
+unique_games$name <- str_replace_all(unique_games$name, "™", " ")
+unique_games$name <- str_replace_all(unique_games$name, "®", " ")
+unique_games$name <- str_replace_all(unique_games$name, "s t a l k e r", "stalker")
+unique_games$name <- str_trim(unique_games$name)
+unique_games$name <- str_squish(unique_games$name)
+
+game_names_gr <- unique_games %>% tidytext::unnest_tokens(word, name)
+game_names_gr = game_names_gr %>% 
+mutate(word = textstem::lemmatize_words(word))
+game_names_gr <- as.vector(game_names_gr)
+game_names_gr <- unique(game_names_gr)
+```
+
+```{r}
+# filtering reviews
+games_meta_100$original_review <- games_meta_100$review
+games_meta_100$review <- str_to_lower(games_meta_100$review)
+games_meta_100$review <- str_replace_all(games_meta_100$review, "\n", " ")
+games_meta_100$review <- str_replace_all(games_meta_100$review, "\r", " ")
+games_meta_100$review <- str_replace_all(games_meta_100$review, "s t a l k e r", "stalker")
+games_meta_100$review <- str_replace_all(games_meta_100$review, "[^[:alnum:]]", " ")
+#games_meta_100$review <- str_replace_all(games_meta_100$review, "[^[:alnum:][-:`']]", " ")
+#games_meta_100$review <- gsub("(?![a-z])[[:alpha:]]", " ", games_meta_100$review, perl=T)
+#games_meta_100$review <- gsub("[<].*[>]", " ", games_meta_100$review )
+games_meta_100$review <- iconv(games_meta_100$review, "latin1", "ASCII", sub="") # to delete unicode values
+games_meta_100$review <- str_squish(games_meta_100$review)
+games_meta_100$review <- str_trim(games_meta_100$review)
+
+
+# counting the number of words
+games_meta_100$count <- str_count(games_meta_100$review, "\\W+") + 1 # counts spaces -> to count words need + 1
+summary(games_meta_100$count)
+games_meta_100 <- games_meta_100 %>% filter(count >= 4)
+
+
+#filtering words by grams and lemmatization
+games_gram <- games_meta_100 %>% tidytext::unnest_tokens(word, review)
+en <- stopwords::stopwords("en")
+games_gram <- games_gram %>% filter(!word %in% en)
+games_gram = games_gram %>% 
+mutate(lemma = textstem::lemmatize_words(word))
+
+# sorting by word frequency
+games_count <- games_gram %>% count(lemma, sort = TRUE)
+games_count <- rename(games_count, "word" = "lemma")
+games_count_antijoin <- games_count %>% anti_join(game_names_gr) # not to delete the words from game names by accident
+games_count_antijoin <- games_count_antijoin %>% filter(n > 1000 | n < 10)
+games_count_antijoin <- rename(games_count_antijoin, "lemma" = "word")
+
+# leaving only necessary words in our corpus
+games_gram <- games_gram %>% anti_join(games_count_antijoin)
+games_gram <- games_gram %>% filter(lemma != "game")
+games_final <- games_gram %>% group_by(recommendationid) %>% summarise(review = paste0(lemma,collapse=" "))
+games_final$length <- str_count(games_final$review, "\\W+") + 1
+#games_final_desc <- games_final %>% arrange(desc(length))
+games_final <- games_final %>% filter(length <= 327 & length > 3)
+# но остается только по ид присоединить к games_meta_100
+```
+
+
+
+
