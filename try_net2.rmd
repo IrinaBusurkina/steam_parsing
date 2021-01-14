@@ -1,0 +1,122 @@
+---
+title: "try_net"
+output: html_document
+---
+
+```{r}
+library(dplyr)
+library(stringr)
+library(tidyverse)
+library(tidytext)
+library(readr)
+library(visNetwork)
+library(igraph)
+load("C:/Program Files/directory/Games_Ira/games_network.RData")
+
+#cleaning games that incorporate common words
+f <- as.data.frame(unique(net$game_origin))
+f <- f %>% rename("game" = "unique(net$game_origin)")
+f1 <- as.data.frame(unique(net$game_review))
+f1 <- f1 %>% rename("game" = "unique(net$game_review)")
+f <- rbind(f, f1)
+f <- unique(f) # 235 unique games all in all
+
+#vector with games to delete (28 games to delete)
+v_delete <- c( "create",
+  "cars",
+  "infected",
+  "moon",
+  "driven",
+  "journey",
+  "ride",
+  "the darkness",
+  "the movies",
+  "the thing",
+  "black",
+  "pain",
+  "pure",
+  "endgame",
+  "legendary",
+  "nostalgia",
+  "driver",
+  "exit",
+  "blur",
+  "dirt",
+  "robots",
+  "primal",
+  "fuel",
+  "lair",
+  "risen",
+  "the ball",
+  "contact",
+  "stolen")
+
+# we have remaining 207 games
+net1 <- f %>% filter(!game %in% v_delete
+)
+net1 <- net %>% filter(game_origin %in% net1$game & game_review %in% net1$game)
+```
+
+```{r}
+#directed graph
+g = graph_from_data_frame(net1, directed = TRUE)
+g = igraph::simplify(g, remove.multiple = TRUE, remove.loops = TRUE)
+
+degree <- degree(g, v = V(g), mode = c("all"))
+g=delete_vertices(g,degree < 1)
+g=delete_vertices(g,degree > 23)
+
+
+#assigning the right attributes
+vertex_attr <- vertex_attr(g)
+vertex_attr = as.data.frame(vertex_attr)
+
+vertex_attr$name = as.character(vertex_attr$name)
+
+names(rating1)[1] = "name"
+rating1$name = as.character(rating1$name)
+
+vertex_attr <- left_join(vertex_attr, rating1, by = "name")
+
+V(g)$rating = vertex_attr$score_mean
+V(g)$year = vertex_attr$year
+
+size.d = degree(g, mode = "in")
+V(g)$size = log(size.d+1)+1
+
+#vain attempt -> attaching genres
+rating1 <- rating %>%
+group_by(Name) %>%
+summarise(score_mean = mean(User_Score), year = min(Year_of_Release), genre = first(Genre))
+rating1 <- rating1 %>% rename(name = Name)
+rating1$genre <- as.character(rating1$genre)
+rating1$name <- as.character(rating1$name)
+rating1$name <- str_to_lower(rating1$name)
+rating1$name <- str_replace_all(rating1$name, "[^[:alnum:]]", " ")
+rating1$name <- str_squish(rating1$name)
+rating1$name <- str_trim(rating1$name)
+vertex_attr1 <- rating1 %>% select(name, genre) %>% right_join(vertex_attr, by = "name")
+V(g)$genre = vertex_attr1$genre
+n_distinct(vertex_attr1$genre)
+
+membership = as.factor(V(g)$genre)
+
+#visualize
+netvis1 <- toVisNetworkData(g)
+netvis1$nodes$title = netvis1$nodes$label
+netvis1$nodes$size = scales::rescale(netvis1$nodes$size^2, to = c(1, 50))
+netvis1$nodes$color = RColorBrewer::brewer.pal(12, "Paired")[membership]
+netvis1$nodes$membership = membership
+
+
+visNetwork(nodes = netvis1$nodes, edges = netvis1$edges, height = "800px", width = "1600px") %>% 
+  visIgraphLayout() %>% 
+  visEdges(arrows ="to") %>% visOptions( highlightNearest = TRUE, selectedBy = "membership")
+```
+
+```{r}
+assortativity_nominal(g, as.numeric(as.factor(V(g)$genre)), directed = T) # 0.55
+
+assortativity(g, V(g)$rating, directed = T)
+assortativity(g, V(g)$year, directed = T)
+```
